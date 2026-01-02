@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>星語塔羅 - 線上抽牌</title>
+    <style>
+        :root {
+            --primary-color: #6a0dad;
+            --accent-color: #ffd700;
+            --bg-color: #1a1a2e;
+            --card-bg: #16213e;
+            --text-color: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-color) 0%, #0f0c29 100%);
+            color: var(--text-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            animation: fadeIn 2s ease-in;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        /* 卡片區域 */
+        .card-container {
+            perspective: 1000px;
+            width: 280px;
+            height: 460px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .card-inner {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transition: transform 0.8s;
+            transform-style: preserve-3d;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            border-radius: 15px;
+        }
+
+        /* 翻牌動畫 Class */
+        .card-container.flipped .card-inner {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            border: 2px solid var(--accent-color);
+        }
+
+        /* 卡背設計 */
+        .card-front {
+            background: radial-gradient(circle, #4b0082 0%, #000 100%);
+            background-image: url('data:image/svg+xml;utf8,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="10" cy="10" r="1" fill="rgba(255,215,0,0.2)"/></svg>');
+        }
+
+        .card-front::after {
+            content: "🔮";
+            font-size: 4rem;
+            filter: drop-shadow(0 0 10px var(--accent-color));
+            animation: pulse 2s infinite;
+        }
+
+        /* 卡面設計 (結果) */
+        .card-back {
+            background: var(--card-bg);
+            transform: rotateY(180deg);
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+
+        .tarot-image {
+            font-size: 5rem;
+            margin-bottom: 20px;
+        }
+
+        .card-name {
+            font-size: 1.8rem;
+            color: var(--accent-color);
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            padding-bottom: 10px;
+            width: 100%;
+        }
+
+        .card-meaning {
+            font-size: 1rem;
+            line-height: 1.6;
+        }
+
+        .action-btn {
+            margin-top: 40px;
+            padding: 12px 30px;
+            font-size: 1.2rem;
+            background: transparent;
+            color: var(--accent-color);
+            border: 2px solid var(--accent-color);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--accent-color);
+            color: var(--bg-color);
+            box-shadow: 0 0 15px var(--accent-color);
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .keywords {
+            font-size: 0.9rem;
+            color: #a29bfe;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>星語塔羅</h1>
+        <div class="subtitle">請在心中默念你的問題，然後點擊卡牌</div>
+    </header>
+
+    <div class="card-container" id="cardContainer" onclick="drawCard()">
+        <div class="card-inner">
+            <div class="card-front">
+                <p style="margin-top: 80px; color: #aaa; font-size: 0.9rem;">點擊以此抽牌</p>
+            </div>
+            <div class="card-back">
+                <div class="tarot-image" id="cardIcon"></div>
+                <div class="card-name" id="cardName"></div>
+                <div class="keywords" id="cardKeywords"></div>
+                <p class="card-meaning" id="cardDesc"></p>
+            </div>
+        </div>
+    </div>
+
+    <button class="action-btn" onclick="resetCard()" id="resetBtn" style="display: none;">再次抽牌</button>
+
+    <script>
+        // 大阿爾克那 22 張牌資料庫
+        const tarotData = [
+            { name: "0. 愚者 (The Fool)", icon: "🤡", keywords: "新的開始、冒險、天真", desc: "這張牌代表一個全新的開始，暗示你需要放下恐懼，帶著天真的信心踏上未知的旅程。相信直覺，大膽嘗試。" },
+            { name: "I. 魔術師 (The Magician)", icon: "🪄", keywords: "創造力、技能、意志力", desc: "你擁有實現目標所需的所有資源與能力。現在是採取行動、將想法轉化為現實的最佳時機。" },
+            { name: "II. 女祭司 (The High Priestess)", icon: "🌙", keywords: "直覺、潛意識、神祕", desc: "這是一個需要靜心傾聽內在聲音的時刻。答案不在外在世界，而在你的直覺與夢境之中。" },
+            { name: "III. 皇后 (The Empress)", icon: "👑", keywords: "豐盛、母性、自然", desc: "這張牌象徵著豐收與感官的享受。無論是計畫的成果還是人際關係，都將迎來溫暖與滋養。" },
+            { name: "IV. 皇帝 (The Emperor)", icon: "🏛️", keywords: "權威、結構、穩定", desc: "你需要建立秩序與規則。透過自律與邏輯思考，你能夠掌控局面並建立穩固的基礎。" },
+            { name: "V. 教皇 (The Hierophant)", icon: "📜", keywords: "傳統、信仰、學習", desc: "這張牌暗示遵循傳統價值或尋求心靈導師的指引。有時候，依循既定的道路是解決問題的良方。" },
+            { name: "VI. 戀人 (The Lovers)", icon: "❤️", keywords: "愛、和諧、選擇", desc: "這不僅代表愛情，更代表重大的抉擇。你需要誠實面對自己的價值觀，做出符合心靈的決定。" },
+            { name: "VII. 戰車 (The Chariot)", icon: "🛒", keywords: "勝利、意志力、決心", desc: "透過強大的意志力與自控，你將克服眼前的障礙。保持專注，勝利就在前方。" },
+            { name: "VIII. 力量 (Strength)", icon: "🦁", keywords: "勇氣、耐心、同情心", desc: "真正的力量不是武力，而是以柔克剛的內在韌性。面對困難時，請保持耐心與寬容。" },
+            { name: "IX. 隱士 (The Hermit)", icon: "🔦", keywords: "內省、孤獨、引導", desc: "這是一段需要獨處與反思的時間。暫時從喧囂中抽離，尋找內在的光芒與答案。" },
+            { name: "X. 命運之輪 (Wheel of Fortune)", icon: "🎡", keywords: "改變、循環、運氣", desc: "生命充滿變數，改變即將到來。順應時勢，接受命運的安排，低潮過後必有高潮。" },
+            { name: "XI. 正義 (Justice)", icon: "⚖️", keywords: "公平、真理、因果", desc: "你需要客觀地看待事實。你的行為將帶來相應的結果，誠實與公正將是解決問題的關鍵。" },
+            { name: "XII. 吊人 (The Hanged Man)", icon: "🧘", keywords: "犧牲、換位思考、等待", desc: "暫停一下，試著換個角度看世界。有時候，「無為」是為了獲得更高的智慧與啟發。" },
+            { name: "XIII. 死神 (Death)", icon: "💀", keywords: "結束、轉變、重生", desc: "不要害怕，這代表一個階段的結束與新階段的開始。放下不再適合你的人事物，才能迎來新生。" },
+            { name: "XIV. 節制 (Temperance)", icon: "🏺", keywords: "平衡、調和、耐心", desc: "尋找中庸之道。你需要協調生活中的對立面，保持心靈的平靜與平衡。" },
+            { name: "XV. 惡魔 (The Devil)", icon: "😈", keywords: "束縛、誘惑、物質主義", desc: "你是否被慾望或恐懼束縛了？這張牌提醒你檢視那些讓你失去自由的執念，並試圖掙脫。" },
+            { name: "XVI. 高塔 (The Tower)", icon: "⚡", keywords: "突變、破壞、啟示", desc: "雖然突如其來的變故令人震驚，但它打破了虛假的假象。這是重建真實自我的必要過程。" },
+            { name: "XVII. 星星 (The Star)", icon: "🌟", keywords: "希望、靈感、平靜", desc: "暴風雨後的寧靜。保持信心，宇宙正在指引你，願望有機會實現。" },
+            { name: "XVIII. 月亮 (The Moon)", icon: "🌖", keywords: "幻覺、恐懼、不安", desc: "事情可能不如表面看起來那樣。面對潛意識的恐懼，小心迷失方向，多加依靠直覺分辨真偽。" },
+            { name: "XIX. 太陽 (The Sun)", icon: "☀️", keywords: "快樂、成功、活力", desc: "這是最積極的牌之一。陰霾散去，充滿活力與喜悅的時光即將到來，享受當下吧！" },
+            { name: "XX. 審判 (Judgement)", icon: "🎺", keywords: "覺醒、召喚、重生", desc: "這是一個重要的轉折點。過去的努力將被評斷，你需要原諒過去，響應內心的召喚。" },
+            { name: "XXI. 世界 (The World)", icon: "🌍", keywords: "圓滿、完成、旅行", desc: "一個週期的完美結束。你已經達成了目標，享受這份成就感，並準備迎接下一個層次。" }
+        ];
+
+        let isFlipped = false;
+
+        function drawCard() {
+            if (isFlipped) return; // 防止重複點擊
+
+            // 1. 隨機選擇一張牌
+            const randomIndex = Math.floor(Math.random() * tarotData.length);
+            const card = tarotData[randomIndex];
+
+            // 2. 填充內容
+            document.getElementById('cardIcon').textContent = card.icon;
+            document.getElementById('cardName').textContent = card.name;
+            document.getElementById('cardKeywords').textContent = `✦ ${card.keywords}`;
+            document.getElementById('cardDesc').textContent = card.desc;
+
+            // 3. 執行動畫
+            const container = document.getElementById('cardContainer');
+            container.classList.add('flipped');
+            isFlipped = true;
+
+            // 4. 顯示重置按鈕
+            setTimeout(() => {
+                document.getElementById('resetBtn').style.display = 'block';
+            }, 800);
+        }
+
+        function resetCard() {
+            const container = document.getElementById('cardContainer');
+            container.classList.remove('flipped');
+            isFlipped = false;
+            document.getElementById('resetBtn').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
